@@ -1,0 +1,44 @@
+# AutiConnect ML training plan
+
+## First task and input contract
+
+Train a supervised classifier for `instruction_format`. Given a task category and earlier choices available at prediction time, estimate whether the user will independently select numbered steps, a checklist or a paragraph. Keep task content and level of detail comparable across formats. A turn-level choice is a label with consent. A separate explicit save creates an authoritative preference. No real-world dataset is assumed.
+
+| Field group | Use |
+| --- | --- |
+| Task context | Fixed synthetic categories such as planning, learning and communication. One-hot encode the current category and map unseen values to an explicit unknown category. |
+| Earlier choices | Count or compute proportions over the last 20 eligible choices overall and by current task category. Encode the most recent eligible choice and history size. Include missing-history indicators. |
+| Timing | Use the elapsed time since the last eligible choice as an optional binned or scaled feature. Build features with only events and labels available strictly before the current prediction, with a stable event ordering. |
+| Label | Independent deliberate format selection from the complete option set. Keep its availability time, provenance and consent for auditing. Exclude missing, ambiguous or suggestion-exposed labels from the primary experiment. |
+| Audit fields | Use event and user IDs for grouping and deduplication only. Store exposure, generator persona, scripted drift and future state outside the feature matrix. Do not include transcripts, sensitive attributes or inferred personal traits. |
+
+Validate typed fields, offered choices, timestamp ordering, deduplication and active consent. The same feature code serves offline, incremental and inference paths. Persist a frozen feature contract and any fitted transformations. Fit scaling or encoder vocabulary on training only, with stable category ordering and known handling for sparse histories. Drop invalid rows with coded reasons and report counts. An LLM response or an unconfirmed inference supplies no label.
+
+## Synthetic data and splits
+
+Implement a seeded generator in M6. Generate independent persona families, repeated tasks, context effects, heterogeneous preferences, imbalanced classes, label delays, observation gaps, abrupt and gradual drift, and stable controls. Start with a pilot of roughly 240 accounts and 120–200 turns per account across seeds, including sparse accounts. Treat the numbers as planning assumptions. Record the generator parameters, seeds, checksums, data volumes and eligibility counts. Never expose latent preferences or drift markers to the model.
+
+| Protocol | Train | Validation | Test |
+| --- | --- | --- | --- |
+| Offline generalisation, M7 | Earliest time window and training persona families. Fit preprocessing and classifier here. | Later window with disjoint users and persona families. Choose settings and compare baseline variants here. | Latest frozen window with disjoint users and persona families. Score a frozen estimator. Earlier eligible choices from test accounts may supply point-in-time features. |
+| Continuous adaptation, M8 | Use the frozen synthetic starter. An account's initial stream prefix supplies eligible warm-up examples. | Use independent, ordered validation streams to tune batch size, drift rules and release thresholds. Within a stream, a later gate slice follows each candidate's fitting prefix. | Use independently seeded held-out streams. Predict before the label arrives, score the prediction when it does, and then make that observation eligible for later fitting. Apply the predeclared update policy without tuning it on this stream. |
+
+Assign users and persona families to groups before feature fitting. Choose and record global time cutoffs and the chronological rule for stream slices. Keep related templates and near-duplicate sequences together. Freeze manifests and hyperparameters before test evaluation. Assign delayed labels by availability for fitting and check their features against prediction time. Keep all predictions and timestamps needed to prove ordering. Do not use a test result to select a model for the same benchmark. [scikit-learn guidance on leakage](https://scikit-learn.org/stable/common_pitfalls.html)
+
+## Training, updating and comparing
+
+1. **Baselines.** Fit a global majority and class-frequency distribution on the training group. Compare each prediction with a user's history mode, most recent choice and context-conditioned mode when support allows. Use the training-set distribution for no-history baseline rows. For adaptation, also compare the frozen starter. Give every method the same information cutoff.
+2. **Initial model.** Train a regularised `SGDClassifier(loss="log_loss")` on the synthetic fit partition. Supply the complete class vocabulary on first `partial_fit`. Fit deterministic mini-batches with fixed seed and stable ordering. Tune the regularisation, learning-rate schedule, batch size and serving threshold on validation. Freeze the feature transform and model recipe before test. Report comparative scores even if simple baselines perform better. [scikit-learn SGDClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html)
+3. **Account-specific updates.** Copy the synthetic starter or latest eligible account parent into a candidate without mutating either artifact. Select unused eligible observations per lineage with a consistent timestamp cutoff. Apply `partial_fit` in an isolated command. Record before/after artifact checksums, parameter-change diagnostics, observation membership and parent. Replay or retries cannot apply a sample twice in one account-model lineage.
+4. **Drift and cold start.** Compare recent versus prior label distributions and observed prediction error at configured support levels. Check within task categories where feasible because a shift in task mix can change aggregate counts. Use a sustained change to queue candidate evaluation and report false alarms in stable streams. For sparse histories, stale observations, low class scores or missing eligible models, abstain and resolve explicit preferences or a default. A model estimate cannot change a confirmed setting.
+5. **Storage and rebuild.** Persist the immutable estimator, feature contract, code and dependency versions, class order, data manifests, metrics, checksum and parentage. Keep owner artifacts private. On rollback, verify eligibility and move the pointer atomically. On deletion, invalidate affected versions first, rebuild affected features from surviving inputs and fit a clean candidate from the synthetic starter.
+
+## Acceptance and reporting
+
+Compare the incumbent or frozen starter, candidate, and recent-choice baseline on a chronological gate slice with labels available after the candidate's fitting cutoff. Neither candidate nor incumbent may have fit the gate rows. Keep gate replay separate from final research scoring. Use prediction-time features and record each participant's data epoch, tested cutoff and metrics. For the simulated live policy, release decisions may use earlier observed rows and may affect only later predictions.
+
+Pilot gate settings to validate in M8 are at least 30 eligible account fitting labels, 30 untouched gate labels with at least five per class, and macro F1 at least as high as both incumbent and recency baseline. Require no more than a five-percentage-point accuracy drop from the incumbent as an initial guardrail. Review the settings on validation, freeze the final values and record them in the run manifest. A sparse or underperforming candidate remains inactive. Publish only if consent, snapshot epoch and the expected active pointer still match, and the artifact is intact. Later-fitting data can include previous gate rows once they are eligible and unused in that lineage.
+
+Report macro F1, accuracy, class support, confusion matrix, log loss for class distributions, abstention coverage and accuracy on served predictions. Report stable, drift and sparse-history slices separately. Measure recovery from a scripted shift, training duration, memory use and artifact size. Verify real fitted parameter changes, duplicate isolation, failed and concurrent promotions, rollback, and deletion followed by a clean rebuild. The [evaluation plan](EVALUATION_PLAN.md) defines comparative end-to-end measurements and reporting.
+
+Every run records seed and generator config, split IDs/checksums, cutoffs, model and dependency versions, feature recipe, hardware, test protocol and code revision. Re-run the same manifest and compare outputs, noting any tolerance needed for platform differences. **M0 results are pending implementation.** No datasets, artifacts, scores or cost measurements exist yet.
