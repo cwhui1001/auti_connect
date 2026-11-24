@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+next-env.d.ts
+out/
+.npm-cache/
+*.tsbuildinfo
+coverage/
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+supabase/.temp/
+*.log

@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f5f7f5;
+  --foreground: #16261f;
+  --card: #ffffff;
+  --primary: #185b46;
+  --primary-foreground: #ffffff;
+  --muted: #edf3ee;
+  --muted-foreground: #516259;
+  --border: #dce5de;
+  --input: #71857a;
+  --ring: #207253;
+  --destructive: #a32736;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
