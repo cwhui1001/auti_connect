@@ -2,6 +2,8 @@
 
 Use Supabase PostgreSQL for account data, provenance and model metadata, pgvector for memory embeddings, and private storage for model files. This logical design guides migrations from M1 onward. Public schema access and API permissions should be limited to the workflows that need them.
 
+M1 implements [the foundation migration](../supabase/migrations/202611250001_foundation.sql). It enables pgvector and creates a minimal `profiles` table for display names. The primary key doubles as the owner index and references `auth.users` with account deletion cascading to the profile. Constraints and a database trigger protect name and timestamp fields. Authenticated requests can select, insert and update their own profile under RLS. Profile onboarding and the remaining entities below follow in later milestones.
+
 ## Entity relationships
 
 ```mermaid

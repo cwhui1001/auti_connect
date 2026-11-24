@@ -4,6 +4,14 @@
 
 Use one Next.js application, one modular FastAPI backend and one Supabase project. Keep request handling, memory, prediction and LLM generation independently testable in the backend. Use a separate command from the same Python package for training and maintenance. A small PostgreSQL job ledger will support work that needs retry. The synthetic demonstration can run with one worker and private artifact storage.
 
+## M1 implementation
+
+Next.js renders the dashboard and handles email/password Auth through server actions and a confirmation route. An SSR Proxy refreshes the session into HTTP-only cookies. The protected layout and profile action check verified claims again. Next.js makes uncached server-to-server requests to FastAPI, so the browser does not need the API origin or an access token in JavaScript.
+
+FastAPI serves versioned health and owner-profile endpoints. The Supabase adapter verifies a presented JWT with hosted Auth, checks its issuer, audience, expiry, role and subject, and forwards that user token and the project's publishable key to PostgREST. Profile reads and writes derive the owner from verified identity and PostgreSQL rechecks ownership under RLS. The service logs request IDs, route templates, duration and status. Its health endpoint checks process liveness. A profile save and read verifies the database path.
+
+M1 has no AI runtime or training worker. The remaining sections describe interfaces and workflows for later milestones.
+
 ```mermaid
 flowchart LR
     U["Synthetic user"] --> WEB["Next.js chat, onboarding and AI Learning Lab"]
